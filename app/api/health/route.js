@@ -21,6 +21,6 @@ export const POST = withAuth(async () => {
   return NextResponse.json({
     claude,
     chatgpt,
-    usage: { ...(await todayUsage()), limit: Number(process.env.DAILY_CALL_LIMIT || 300) },
+    usage: { ...(await todayUsage()), limit: Number(process.env.DAILY_CALL_LIMIT || 0) || 'sınırsız' },
   });
 });

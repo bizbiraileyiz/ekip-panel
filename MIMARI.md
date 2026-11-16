@@ -47,3 +47,7 @@ Sahte çerez → 401. 6. hatalı denemede 429. Çıkış sonrası eski çerez �
 - **Markdown:** react-markdown + remark-gfm. Ham HTML işlenmez, linkler yeni sekmede açılır.
 - **Sistem istemi:** Panelin kimin tarafından geliştirildiği, repo adresi ve "[Geliştirici Claude]:" mesaj kuralı eklendi.
 - **Akış:** Uzun araç kullanımında bağlantı kopmasın diye 15 sn'de bir `ping` olayı gönderilir.
+
+## v0.3.1 – sınırlar kaldırıldı (Murat'ın kararı)
+- Günlük çağrı sınırı yok (DAILY_CALL_LIMIT=0). Web araması/okuma için adet sınırı yok. Cevap uzunluğu 16000 token. Ek dosyalar son 10 ekli mesaja kadar modele gider.
+- Kalan teknik emniyetler: 25 araç turu (sonsuz döngüye karşı), 5 dk zaman aşımı. Maliyetin tek freni API panellerindeki harcama limitleri.
