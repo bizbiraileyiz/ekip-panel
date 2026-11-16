@@ -101,7 +101,7 @@ export default function Panel() {
   const [health, setHealth] = useState('');
   const [files, setFiles] = useState([]); // { name, mime, data(base64), preview }
   const [profile, setProfile] = useState(null); // { text, saved, status }
-  const [pin, setPin] = useState({ text: '', version: 0, open: true, edit: null, status: '' }); // odanın sabit mesajı
+  const [pin, setPin] = useState({ text: '', version: 0, open: false, edit: null, status: '' }); // odanın sabit mesajı
   const fileInput = useRef(null);
   const endRef = useRef(null);
   const lastId = messages.length ? messages[messages.length - 1].id : 0;
@@ -127,7 +127,7 @@ export default function Panel() {
     setTyping(null);
     setError('');
     const ctrl = new AbortController();
-    setPin({ text: '', version: 0, open: true, edit: null, status: '' });
+    setPin({ text: '', version: 0, open: store('ekip_pin_open') === '1', edit: null, status: '' });
     api(`/api/projects/${pid}/memory`, { signal: ctrl.signal })
       .then((r) => r.json())
       .then((r) => pidRef.current === pid && setPin((p) => ({ ...p, text: r.memory || '', version: r.version || 0 })))
@@ -348,8 +348,8 @@ export default function Panel() {
       {(pin.text || pin.edit !== null) && (
         <div className="pin">
           <div className="pinbar">
-            <button type="button" className="pintitle" onClick={() => setPin((p) => ({ ...p, open: !p.open }))}>
-              📌 Sabit mesaj {pin.open ? '▾' : '▸'}
+            <button type="button" className="pintitle" onClick={() => setPin((p) => { store('ekip_pin_open', p.open ? '0' : '1'); return { ...p, open: !p.open }; })}>
+              📌 Sabit mesaj {pin.open ? '▾ (kapat)' : '▸ (aç)'}
             </button>
             {pin.edit === null ? (
               <button type="button" className="btn" onClick={() => setPin((p) => ({ ...p, edit: p.text, open: true }))}>Düzenle</button>
