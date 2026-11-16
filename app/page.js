@@ -98,7 +98,6 @@ export default function Panel() {
   const [busyPid, setBusyPid] = useState(null); // cevap beklenen proje
   const [typing, setTyping] = useState(null);
   const [error, setError] = useState('');
-  const [mem, setMem] = useState(null); // { items, version, input, status }
   const [health, setHealth] = useState('');
   const [files, setFiles] = useState([]); // { name, mime, data(base64), preview }
   const [profile, setProfile] = useState(null); // { text, saved, status }
@@ -124,7 +123,6 @@ export default function Panel() {
     if (!pid) return;
     store('ekip_pid', String(pid));
     setMessages([]);
-    setMem(null);
     setTyping(null);
     setError('');
     const ctrl = new AbortController();
@@ -241,41 +239,6 @@ export default function Panel() {
     setProfile((p) => ({ ...p, saved: p.text, status: 'Kaydedildi' }));
   }
 
-  // Liste: her satır bir madde ("- " ile saklanır). Ekle / sil.
-  const toItems = (text) =>
-    (text || '').split('\n').map((l) => l.replace(/^\s*[-*]\s*/, '').trim()).filter(Boolean);
-
-  async function loadMemory(status = '') {
-    const r = await api(`/api/projects/${pid}/memory`).then((r) => r.json());
-    if (pidRef.current !== pid) return;
-    setMem({ items: toItems(r.memory), version: r.version, input: '', status });
-  }
-
-  async function saveItems(items) {
-    setMem((m) => ({ ...m, items, status: 'Kaydediliyor…' }));
-    const res = await api(`/api/projects/${pid}/memory`, {
-      method: 'PUT',
-      body: JSON.stringify({ memory: items.map((i) => `- ${i}`).join('\n'), version: mem.version }),
-    });
-    const r = await res.json();
-    if (res.status === 409) {
-      setMem((m) => ({ ...m, items: toItems(r.memory), version: r.version, status: 'Liste başka yerde değişmiş, güncel hali yüklendi. Tekrar dene.' }));
-      return;
-    }
-    setMem((m) => ({ ...m, version: r.version, status: 'Kaydedildi' }));
-  }
-
-  function addItem(e) {
-    e?.preventDefault();
-    const t = mem.input.trim();
-    if (!t) return;
-    setMem((m) => ({ ...m, input: '' }));
-    saveItems([...mem.items, t]);
-  }
-
-  function removeItem(i) {
-    saveItems(mem.items.filter((_, j) => j !== i));
-  }
 
   async function newProject() {
     const name = prompt('Yeni oda adı');
@@ -301,7 +264,7 @@ export default function Panel() {
 
   async function deleteProject() {
     const name = projects.find((p) => p.id === pid)?.name || '';
-    if (!confirm(`"${name}" odası silinsin mi?\nTüm mesajları ve listesi kalıcı olarak silinir. Geri alınamaz.`)) return;
+    if (!confirm(`"${name}" odası silinsin mi?\nTüm mesajları kalıcı olarak silinir. Geri alınamaz.`)) return;
     const res = await api(`/api/projects/${pid}`, { method: 'DELETE' });
     const r = await res.json();
     if (!res.ok) return setError(r.error || 'Silinemedi');
@@ -310,7 +273,7 @@ export default function Panel() {
   }
 
   async function clearChat() {
-    if (!confirm('Bu projenin tüm mesajları kalıcı olarak silinsin mi?\nGeri alınamaz. Liste ve Hakkımda kalır.')) return;
+    if (!confirm('Bu projenin tüm mesajları kalıcı olarak silinsin mi?\nGeri alınamaz. Hakkımda kalır.')) return;
     const res = await api(`/api/projects/${pid}/clear`, { method: 'POST' });
     const r = await res.json();
     if (!res.ok) return setError(r.error || 'Temizlenemedi');
@@ -332,7 +295,6 @@ export default function Panel() {
         </select>
         <button className="btn" onClick={newProject} title="Yeni oda">+</button>
         <button className="btn" onClick={deleteProject} disabled={busy} title="Bu odayı sil">−</button>
-        <button className="btn" onClick={() => (mem ? setMem(null) : loadMemory())}>Liste</button>
         <button className="btn" onClick={openProfile} title="Tüm projelerde ortak bilgi">Hakkımda</button>
         <button className="btn" onClick={clearChat} disabled={busy} title="Sohbeti temizle">Temizle</button>
         <button className="btn" onClick={() => (health ? setHealth('') : testConnection())} title="Bağlantı testi">Test</button>
@@ -349,33 +311,6 @@ export default function Panel() {
             <button className="btn primary" onClick={saveProfile} disabled={profile.text === profile.saved}>Kaydet</button>
             <span className="hint">{profile.status}</span>
           </div>
-        </div>
-      )}
-
-      {mem && (
-        <div className="memory">
-          {mem.items.length ? (
-            <ul className="list">
-              {mem.items.map((it, i) => (
-                <li key={i}>
-                  <span>{it}</span>
-                  <button type="button" onClick={() => removeItem(i)} title="Sil">×</button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="hint">Liste boş.</div>
-          )}
-          <form className="row" onSubmit={addItem}>
-            <input
-              className="listin"
-              value={mem.input}
-              onChange={(e) => setMem((m) => ({ ...m, input: e.target.value }))}
-              placeholder="Yeni madde yaz"
-            />
-            <button className="btn primary" disabled={!mem.input.trim()}>Ekle</button>
-          </form>
-          <div className="hint" style={{ marginTop: 6 }}>{mem.status || 'İkisi de her cevapta bu listeyi okur.'}</div>
         </div>
       )}
 
