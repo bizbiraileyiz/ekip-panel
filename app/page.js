@@ -98,7 +98,7 @@ export default function Panel() {
   const [busyPid, setBusyPid] = useState(null); // cevap beklenen proje
   const [typing, setTyping] = useState(null);
   const [error, setError] = useState('');
-  const [mem, setMem] = useState(null); // { text, version, saved, history, draft, status }
+  const [mem, setMem] = useState(null); // { items, version, input, status }
   const [health, setHealth] = useState('');
   const [files, setFiles] = useState([]); // { name, mime, data(base64), preview }
   const [profile, setProfile] = useState(null); // { text, saved, status }
@@ -241,37 +241,40 @@ export default function Panel() {
     setProfile((p) => ({ ...p, saved: p.text, status: 'Kaydedildi' }));
   }
 
+  // Liste: her satır bir madde ("- " ile saklanır). Ekle / sil.
+  const toItems = (text) =>
+    (text || '').split('\n').map((l) => l.replace(/^\s*[-*]\s*/, '').trim()).filter(Boolean);
+
   async function loadMemory(status = '') {
     const r = await api(`/api/projects/${pid}/memory`).then((r) => r.json());
     if (pidRef.current !== pid) return;
-    setMem({ text: r.memory || '', saved: r.memory || '', version: r.version, history: r.history || [], draft: false, status });
+    setMem({ items: toItems(r.memory), version: r.version, input: '', status });
   }
 
-  async function saveMemory() {
-    setMem((m) => ({ ...m, status: 'Kaydediliyor…' }));
+  async function saveItems(items) {
+    setMem((m) => ({ ...m, items, status: 'Kaydediliyor…' }));
     const res = await api(`/api/projects/${pid}/memory`, {
       method: 'PUT',
-      body: JSON.stringify({ memory: mem.text, version: mem.version }),
+      body: JSON.stringify({ memory: items.map((i) => `- ${i}`).join('\n'), version: mem.version }),
     });
     const r = await res.json();
     if (res.status === 409) {
-      setMem((m) => ({ ...m, text: r.memory, saved: r.memory, version: r.version, draft: false, status: r.error }));
+      setMem((m) => ({ ...m, items: toItems(r.memory), version: r.version, status: 'Liste başka yerde değişmiş, güncel hali yüklendi. Tekrar dene.' }));
       return;
     }
-    await loadMemory('Kaydedildi');
+    setMem((m) => ({ ...m, version: r.version, status: 'Kaydedildi' }));
   }
 
-  async function askDraft() {
-    setMem((m) => ({ ...m, status: 'Claude taslak hazırlıyor…' }));
-    const r = await api(`/api/projects/${pid}/memory/refresh`, { method: 'POST' }).then((r) => r.json());
-    if (pidRef.current !== pid) return;
-    if (r.error) return setMem((m) => ({ ...m, status: `Hata: ${r.error}` }));
-    setMem((m) => ({ ...m, text: r.draft, draft: true, status: 'Taslak. Kontrol et; "Onayla ve kaydet" demeden kaydedilmez.' }));
+  function addItem(e) {
+    e?.preventDefault();
+    const t = mem.input.trim();
+    if (!t) return;
+    setMem((m) => ({ ...m, input: '' }));
+    saveItems([...mem.items, t]);
   }
 
-  function loadVersion(id) {
-    const v = mem.history.find((h) => h.id === Number(id));
-    if (v) setMem((m) => ({ ...m, text: v.content, draft: true, status: 'Eski sürüm yüklendi. Kaydedersen güncel kayıt bu olur.' }));
+  function removeItem(i) {
+    saveItems(mem.items.filter((_, j) => j !== i));
   }
 
   async function newProject() {
@@ -297,7 +300,7 @@ export default function Panel() {
   }
 
   async function clearChat() {
-    if (!confirm('Bu projenin tüm mesajları kalıcı olarak silinsin mi?\nGeri alınamaz. Karar kaydı ve Hakkımda kalır.')) return;
+    if (!confirm('Bu projenin tüm mesajları kalıcı olarak silinsin mi?\nGeri alınamaz. Liste ve Hakkımda kalır.')) return;
     const res = await api(`/api/projects/${pid}/clear`, { method: 'POST' });
     const r = await res.json();
     if (!res.ok) return setError(r.error || 'Temizlenemedi');
@@ -318,7 +321,7 @@ export default function Panel() {
           ))}
         </select>
         <button className="btn" onClick={newProject} title="Yeni proje">+</button>
-        <button className="btn" onClick={() => (mem ? setMem(null) : loadMemory())}>Karar kaydı</button>
+        <button className="btn" onClick={() => (mem ? setMem(null) : loadMemory())}>Liste</button>
         <button className="btn" onClick={openProfile} title="Tüm projelerde ortak bilgi">Hakkımda</button>
         <button className="btn" onClick={clearChat} disabled={busy} title="Sohbeti temizle">Temizle</button>
         <button className="btn" onClick={() => (health ? setHealth('') : testConnection())} title="Bağlantı testi">Test</button>
@@ -340,31 +343,28 @@ export default function Panel() {
 
       {mem && (
         <div className="memory">
-          {mem.draft && <div className="draft">TASLAK – henüz kaydedilmedi</div>}
-          <textarea
-            value={mem.text}
-            onChange={(e) => setMem((m) => ({ ...m, text: e.target.value }))}
-            placeholder="Kesin kararlar, devam eden işler, açık sorunlar…"
-          />
-          <div className="row">
-            <button className="btn primary" onClick={saveMemory} disabled={mem.text === mem.saved && !mem.draft}>
-              {mem.draft ? 'Onayla ve kaydet' : 'Kaydet'}
-            </button>
-            {mem.draft ? (
-              <button className="btn" onClick={() => setMem((m) => ({ ...m, text: m.saved, draft: false, status: 'Vazgeçildi' }))}>Vazgeç</button>
-            ) : (
-              <button className="btn" onClick={askDraft}>Claude'dan taslak iste</button>
-            )}
-            {mem.history.length > 0 && (
-              <select className="btn" value="" onChange={(e) => loadVersion(e.target.value)}>
-                <option value="">Geçmiş</option>
-                {mem.history.map((h) => (
-                  <option key={h.id} value={h.id}>{new Date(h.created_at).toLocaleString('tr-TR')}</option>
-                ))}
-              </select>
-            )}
-            <span className="hint">{mem.status || 'İkisi de her cevapta bu kaydı okur.'}</span>
-          </div>
+          {mem.items.length ? (
+            <ul className="list">
+              {mem.items.map((it, i) => (
+                <li key={i}>
+                  <span>{it}</span>
+                  <button type="button" onClick={() => removeItem(i)} title="Sil">×</button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="hint">Liste boş.</div>
+          )}
+          <form className="row" onSubmit={addItem}>
+            <input
+              className="listin"
+              value={mem.input}
+              onChange={(e) => setMem((m) => ({ ...m, input: e.target.value }))}
+              placeholder="Yeni madde yaz"
+            />
+            <button className="btn primary" disabled={!mem.input.trim()}>Ekle</button>
+          </form>
+          <div className="hint" style={{ marginTop: 6 }}>{mem.status || 'İkisi de her cevapta bu listeyi okur.'}</div>
         </div>
       )}
 

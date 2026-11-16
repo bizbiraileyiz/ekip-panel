@@ -84,3 +84,12 @@ button { cursor: pointer; }
 .chipfile button { border: 0; background: none; font-size: 16px; line-height: 1; padding: 0 2px; color: var(--muted); }
 .top { flex-wrap: wrap; }
 .top select { min-width: 120px; }
+
+/* Liste */
+.list { list-style: none; margin: 0; padding: 0; max-height: 40dvh; overflow-y: auto; }
+.list li { display: flex; align-items: flex-start; gap: 8px; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.list li span { flex: 1; white-space: pre-wrap; overflow-wrap: anywhere; }
+.list li span::before { content: '• '; color: var(--muted); }
+.list li button { border: 0; background: none; font-size: 18px; line-height: 1; color: var(--muted); padding: 0 4px; }
+.list li button:hover { color: var(--sistem); }
+.listin { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
