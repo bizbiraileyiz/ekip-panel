@@ -296,6 +296,14 @@ export default function Panel() {
     }
   }
 
+  async function clearChat() {
+    if (!confirm('Bu projenin sohbeti temizlensin mi?\nKarar kaydı ve Hakkımda kalır. Mesajlar silinmez, arşivlenir.')) return;
+    const res = await api(`/api/projects/${pid}/clear`, { method: 'POST' });
+    const r = await res.json();
+    if (!res.ok) return setError(r.error || 'Temizlenemedi');
+    setMessages([]);
+  }
+
   async function logout() {
     await fetch('/api/logout', { method: 'POST' });
     window.location.href = '/login';
@@ -312,6 +320,7 @@ export default function Panel() {
         <button className="btn" onClick={newProject} title="Yeni proje">+</button>
         <button className="btn" onClick={() => (mem ? setMem(null) : loadMemory())}>Karar kaydı</button>
         <button className="btn" onClick={openProfile} title="Tüm projelerde ortak bilgi">Hakkımda</button>
+        <button className="btn" onClick={clearChat} disabled={busy} title="Sohbeti temizle">Temizle</button>
         <button className="btn" onClick={() => (health ? setHealth('') : testConnection())} title="Bağlantı testi">Test</button>
         <button className="btn" onClick={logout} title="Çıkış">⎋</button>
       </div>
