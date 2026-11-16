@@ -51,3 +51,11 @@ Sahte çerez → 401. 6. hatalı denemede 429. Çıkış sonrası eski çerez �
 ## v0.3.1 – sınırlar kaldırıldı (Murat'ın kararı)
 - Günlük çağrı sınırı yok (DAILY_CALL_LIMIT=0). Web araması/okuma için adet sınırı yok. Cevap uzunluğu 16000 token. Ek dosyalar son 10 ekli mesaja kadar modele gider.
 - Kalan teknik emniyetler: 25 araç turu (sonsuz döngüye karşı), 5 dk zaman aşımı. Maliyetin tek freni API panellerindeki harcama limitleri.
+
+## v0.4 – gerçek tarayıcı
+- Railway artık Dockerfile ile kuruluyor (mcr.microsoft.com/playwright:v1.65.1-noble). playwright-core 1.65.1, Chromium imajla birlikte geliyor.
+- Araçlar (iki model): browser_open (desktop/mobile), browser_scroll, browser_back her sitede; browser_click, browser_type, browser_select sadece TEST_SITES alan adlarında (alt alan adları dahil).
+- Her araç sonucu: sayfa metni (8000 karaktere kadar), numaralı öğe listesi, JPEG ekran görüntüsü. Claude'da son 2 ekran görüntüsü tutulur. OpenAI'de görüntüler fonksiyon çıktısından sonra kullanıcı mesajı olarak verilir.
+- Güvenlik: Her istek (alt kaynaklar dahil) route ile denetlenir. http/https dışı şemalar, localhost, *.internal, *.local ve özel/iç IP'ye çözümlenen adresler engellenir. İndirme kapalı, açılır pencereler kapatılıyor. Oturum her model cevabında sıfırdan açılıp kapanır, çerez ya da hesap tutulmaz.
+- Bilinen kalan risk: Yönlendirme (redirect) hedefleri route'a düşmeyebilir. Herkese açık bir adres iç IP'ye yönlendirirse istek gidebilir; Railway'de bulut metadata servisi yok, etkisi düşük.
+- GitHub fonksiyonlarına OpenAI tarafında strict:false eklendi.

@@ -27,3 +27,8 @@ Anahtarları sadece Railway'e gir. Sohbete ya da GitHub'a yazma.
 - **Hakkımda:** tüm projelerde ortak "Murat hakkında" metni.
 - İsteğe bağlı `GITHUB_TOKEN`: GitHub → Settings → Developer settings → Fine-grained tokens → sadece `ekip-panel`, izin: Contents = Read-only. Token yoksa dosya okuma ve son değişiklik yine çalışır; tüm dosya listesi saatlik sınıra takılabilir.
 - Bir araç sorun çıkarırsa Railway'de `TOOLS_WEB=false` ya da `TOOLS_CODE=false` ile kapatılabilir.
+
+## v0.4 – gerçek tarayıcı
+- Railway, kurulumu artık Dockerfile ile yapıyor; ilk kurulum 5–8 dakika sürebilir.
+- Railway → Variables altına ekle: `TEST_SITES` = tıklama/yazma testi yapılabilecek siteler, virgülle. Örnek: `somborka.com,garantisogutma.com.tr`
+- Diğer bütün sitelerde modeller sadece bakar.
