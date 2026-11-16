@@ -101,6 +101,7 @@ export default function Panel() {
   const [health, setHealth] = useState('');
   const [files, setFiles] = useState([]); // { name, mime, data(base64), preview }
   const [profile, setProfile] = useState(null); // { text, saved, status }
+  const [pin, setPin] = useState({ text: '', version: 0, open: true, edit: null, status: '' }); // odanın sabit mesajı
   const fileInput = useRef(null);
   const endRef = useRef(null);
   const lastId = messages.length ? messages[messages.length - 1].id : 0;
@@ -126,6 +127,11 @@ export default function Panel() {
     setTyping(null);
     setError('');
     const ctrl = new AbortController();
+    setPin({ text: '', version: 0, open: true, edit: null, status: '' });
+    api(`/api/projects/${pid}/memory`, { signal: ctrl.signal })
+      .then((r) => r.json())
+      .then((r) => pidRef.current === pid && setPin((p) => ({ ...p, text: r.memory || '', version: r.version || 0 })))
+      .catch(() => {});
     api(`/api/projects/${pid}/messages`, { signal: ctrl.signal })
       .then((r) => r.json())
       .then((rows) => pidRef.current === pid && Array.isArray(rows) && setMessages(rows))
@@ -227,6 +233,14 @@ export default function Panel() {
     }
   }
 
+  async function savePin() {
+    setPin((p) => ({ ...p, status: 'Kaydediliyor…' }));
+    const res = await api(`/api/projects/${pid}/memory`, { method: 'PUT', body: JSON.stringify({ memory: pin.edit, version: pin.version }) });
+    const r = await res.json();
+    if (res.status === 409) return setPin((p) => ({ ...p, text: r.memory, version: r.version, status: 'Başka yerde değişmiş, güncel hali yüklendi.' }));
+    setPin((p) => ({ ...p, text: p.edit, version: r.version, edit: null, status: '' }));
+  }
+
   async function openProfile() {
     if (profile) return setProfile(null);
     const r = await api('/api/settings').then((r) => r.json());
@@ -282,7 +296,7 @@ export default function Panel() {
   }
 
   async function clearChat() {
-    if (!confirm('Bu projenin tüm mesajları kalıcı olarak silinsin mi?\nGeri alınamaz. Hakkımda kalır.')) return;
+    if (!confirm('Bu projenin tüm mesajları kalıcı olarak silinsin mi?\nGeri alınamaz. Sabit mesaj ve Hakkımda kalır.')) return;
     const res = await api(`/api/projects/${pid}/clear`, { method: 'POST' });
     const r = await res.json();
     if (!res.ok) return setError(r.error || 'Temizlenemedi');
@@ -310,6 +324,9 @@ export default function Panel() {
             {current.auto_reply ? 'Otomatik cevap: açık' : 'Otomatik cevap: kapalı'}
           </button>
         )}
+        {!pin.text && pin.edit === null && (
+          <button className="btn" onClick={() => setPin((p) => ({ ...p, edit: '', open: true }))} title="Odaya sabit mesaj ekle">📌</button>
+        )}
         <button className="btn" onClick={clearChat} disabled={busy} title="Sohbeti temizle">Temizle</button>
         <button className="btn" onClick={() => (health ? setHealth('') : testConnection())} title="Bağlantı testi">Test</button>
         <button className="btn" onClick={logout} title="Çıkış">⎋</button>
@@ -325,6 +342,31 @@ export default function Panel() {
             <button className="btn primary" onClick={saveProfile} disabled={profile.text === profile.saved}>Kaydet</button>
             <span className="hint">{profile.status}</span>
           </div>
+        </div>
+      )}
+
+      {(pin.text || pin.edit !== null) && (
+        <div className="pin">
+          <div className="pinbar">
+            <button type="button" className="pintitle" onClick={() => setPin((p) => ({ ...p, open: !p.open }))}>
+              📌 Sabit mesaj {pin.open ? '▾' : '▸'}
+            </button>
+            {pin.edit === null ? (
+              <button type="button" className="btn" onClick={() => setPin((p) => ({ ...p, edit: p.text, open: true }))}>Düzenle</button>
+            ) : (
+              <>
+                <button type="button" className="btn primary" onClick={savePin}>Kaydet</button>
+                <button type="button" className="btn" onClick={() => setPin((p) => ({ ...p, edit: null, status: '' }))}>Vazgeç</button>
+              </>
+            )}
+            <span className="hint">{pin.status}</span>
+          </div>
+          {pin.open &&
+            (pin.edit !== null ? (
+              <textarea value={pin.edit} onChange={(e) => setPin((p) => ({ ...p, edit: e.target.value }))} />
+            ) : (
+              <div className="pinbody"><Markdown text={pin.text} /></div>
+            ))}
         </div>
       )}
 

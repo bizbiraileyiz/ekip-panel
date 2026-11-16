@@ -98,3 +98,10 @@ button { cursor: pointer; }
 .msg.codex .who { color: #6b4bd6; }
 .msg.dev { border-left: 3px solid var(--claude); background: #fdf6f1; }
 .msg.dev .who { color: var(--claude); }
+
+/* Sabit mesaj */
+.pin { border-bottom: 1px solid var(--line); background: #fffbea; padding: 8px 12px; }
+.pinbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pintitle { border: 0; background: none; font-weight: 600; padding: 4px 0; }
+.pinbody { max-height: 35dvh; overflow-y: auto; margin-top: 6px; font-size: 14px; }
+.pin textarea { width: 100%; min-height: 240px; margin-top: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; resize: vertical; }
