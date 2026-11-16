@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { q } from '@/lib/db';
+import { q, withAttachmentMeta } from '@/lib/db';
 import { withAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -14,5 +14,5 @@ export const GET = withAuth(async (req, { params }) => {
      ) t ORDER BY id ASC`,
     [Number(id), after]
   );
-  return NextResponse.json(r.rows);
+  return NextResponse.json(await withAttachmentMeta(r.rows));
 });

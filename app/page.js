@@ -1,5 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const LABEL = { murat: 'Murat', claude: 'Claude', chatgpt: 'ChatGPT', sistem: 'Sistem' };
 
@@ -29,6 +31,64 @@ function mergeMessages(prev, incoming) {
   return add.length ? [...prev, ...add].sort((a, b) => a.id - b.id) : prev;
 }
 
+const MAX_FILES = 4;
+const MAX_BYTES = 4 * 1024 * 1024;
+
+function readAsBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1]);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+
+// Büyük resimleri tarayıcıda küçült (maliyet ve boyut için)
+async function shrinkImage(file) {
+  if (!file.type.startsWith('image/') || file.type === 'image/gif') return file;
+  const bmp = await createImageBitmap(file).catch(() => null);
+  if (!bmp) return file;
+  const max = 2000;
+  const scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
+  if (scale === 1 && file.size < 1.5 * 1024 * 1024) return file;
+  const c = document.createElement('canvas');
+  c.width = Math.round(bmp.width * scale);
+  c.height = Math.round(bmp.height * scale);
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.85));
+  return blob ? new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }) : file;
+}
+
+function Markdown({ text }) {
+  return (
+    <div className="md">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{ a: ({ node, ...p }) => <a {...p} target="_blank" rel="noopener noreferrer" /> }}
+      >
+        {text}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
+function Attachments({ list }) {
+  if (!list?.length) return null;
+  return (
+    <div className="atts">
+      {list.map((a) =>
+        a.mime.startsWith('image/') ? (
+          <a key={a.id} href={`/api/attachments/${a.id}`} target="_blank" rel="noopener noreferrer">
+            <img src={`/api/attachments/${a.id}`} alt={a.name} />
+          </a>
+        ) : (
+          <a key={a.id} className="file" href={`/api/attachments/${a.id}`} target="_blank" rel="noopener noreferrer">📄 {a.name}</a>
+        )
+      )}
+    </div>
+  );
+}
+
 export default function Panel() {
   const [projects, setProjects] = useState([]);
   const [pid, setPid] = useState(null);
@@ -40,6 +100,9 @@ export default function Panel() {
   const [error, setError] = useState('');
   const [mem, setMem] = useState(null); // { text, version, saved, history, draft, status }
   const [health, setHealth] = useState('');
+  const [files, setFiles] = useState([]); // { name, mime, data(base64), preview }
+  const [profile, setProfile] = useState(null); // { text, saved, status }
+  const fileInput = useRef(null);
   const endRef = useRef(null);
   const lastId = messages.length ? messages[messages.length - 1].id : 0;
   const busy = busyPid !== null;
@@ -96,13 +159,15 @@ export default function Panel() {
     e?.preventDefault();
     const content = text.trim();
     const sentPid = pid;
-    if (!content || busy || !sentPid) return;
+    const sentFiles = files;
+    if ((!content && !sentFiles.length) || busy || !sentPid) return;
     setBusyPid(sentPid);
     setError('');
     setText('');
+    setFiles([]);
     const here = () => pidRef.current === sentPid;
     try {
-      const res = await api(`/api/projects/${sentPid}/send`, { method: 'POST', body: JSON.stringify({ content }) });
+      const res = await api(`/api/projects/${sentPid}/send`, { method: 'POST', body: JSON.stringify({ content, files: sentFiles.map(({ name, mime, data }) => ({ name, mime, data })) }) });
       if (!res.ok || !res.body) throw new Error((await res.json().catch(() => ({}))).error || 'Gönderilemedi');
       const reader = res.body.getReader();
       const dec = new TextDecoder();
@@ -129,11 +194,51 @@ export default function Panel() {
       if (here()) {
         setError(err.message);
         setText(content);
+        setFiles(sentFiles);
       }
     } finally {
       if (here()) setTyping(null);
       setBusyPid(null);
     }
+  }
+
+  async function addFiles(list) {
+    setError('');
+    const incoming = [...list].slice(0, MAX_FILES - files.length);
+    const out = [];
+    for (const f0 of incoming) {
+      if (!(f0.type.startsWith('image/') || f0.type === 'application/pdf')) {
+        setError(`${f0.name}: sadece resim ve PDF eklenebilir`);
+        continue;
+      }
+      const f = await shrinkImage(f0);
+      if (f.size > MAX_BYTES) {
+        setError(`${f.name} 4 MB'tan büyük`);
+        continue;
+      }
+      out.push({ name: f.name || 'resim.png', mime: f.type, data: await readAsBase64(f), preview: f.type.startsWith('image/') ? URL.createObjectURL(f) : null });
+    }
+    if (out.length) setFiles((prev) => [...prev, ...out].slice(0, MAX_FILES));
+  }
+
+  function onPaste(e) {
+    const imgs = [...(e.clipboardData?.files || [])];
+    if (imgs.length) {
+      e.preventDefault();
+      addFiles(imgs);
+    }
+  }
+
+  async function openProfile() {
+    if (profile) return setProfile(null);
+    const r = await api('/api/settings').then((r) => r.json());
+    setProfile({ text: r.profile || '', saved: r.profile || '', status: '' });
+  }
+
+  async function saveProfile() {
+    setProfile((p) => ({ ...p, status: 'Kaydediliyor…' }));
+    await api('/api/settings', { method: 'PUT', body: JSON.stringify({ profile: profile.text }) });
+    setProfile((p) => ({ ...p, saved: p.text, status: 'Kaydedildi' }));
   }
 
   async function loadMemory(status = '') {
@@ -183,7 +288,8 @@ export default function Panel() {
     setHealth('Test ediliyor…');
     try {
       const r = await api('/api/health', { method: 'POST' }).then((r) => r.json());
-      const line = (n, x) => `${n} (${x.model}): ${x.ok ? 'çalışıyor' : 'HATA – ' + x.error}`;
+      const note = (x) => (x.reply?.includes('araçları bu çağrıda kullanılamadı') ? ' (ama web/kod araçları hata verdi: ' + x.reply.split('kullanılamadı:')[1] : '');
+      const line = (n, x) => `${n} (${x.model}): ${x.ok ? 'çalışıyor' + note(x) : 'HATA – ' + x.error}`;
       setHealth(`${line('Claude', r.claude)}\n${line('ChatGPT', r.chatgpt)}\nBugünkü çağrı: ${r.usage.total}/${r.usage.limit}`);
     } catch (e) {
       setHealth(`Test başarısız: ${e.message}`);
@@ -205,11 +311,23 @@ export default function Panel() {
         </select>
         <button className="btn" onClick={newProject} title="Yeni proje">+</button>
         <button className="btn" onClick={() => (mem ? setMem(null) : loadMemory())}>Karar kaydı</button>
+        <button className="btn" onClick={openProfile} title="Tüm projelerde ortak bilgi">Hakkımda</button>
         <button className="btn" onClick={() => (health ? setHealth('') : testConnection())} title="Bağlantı testi">Test</button>
         <button className="btn" onClick={logout} title="Çıkış">⎋</button>
       </div>
 
       {health && <div className="memory hint" style={{ whiteSpace: 'pre-wrap' }}>{health}</div>}
+
+      {profile && (
+        <div className="memory">
+          <div className="hint" style={{ marginBottom: 6 }}>Murat hakkında – tüm projelerde ikisi de okur</div>
+          <textarea value={profile.text} onChange={(e) => setProfile((p) => ({ ...p, text: e.target.value }))} placeholder="Kim olduğun, işlerin, tercihlerin…" />
+          <div className="row">
+            <button className="btn primary" onClick={saveProfile} disabled={profile.text === profile.saved}>Kaydet</button>
+            <span className="hint">{profile.status}</span>
+          </div>
+        </div>
+      )}
 
       {mem && (
         <div className="memory">
@@ -246,7 +364,8 @@ export default function Panel() {
         {messages.map((m) => (
           <div key={m.id} className={`msg ${m.sender}`}>
             {m.sender !== 'murat' && <div className="who">{LABEL[m.sender] || m.sender}</div>}
-            {m.content}
+            {m.sender === 'sistem' ? m.content : <Markdown text={m.content} />}
+            <Attachments list={m.attachments} />
           </div>
         ))}
         {typing && busyPid === pid && <div className="typing">{LABEL[typing]} yazıyor…</div>}
@@ -256,8 +375,28 @@ export default function Panel() {
       <div className="compose">
         {error && <div className="err">{error}</div>}
         {busy && busyPid !== pid && <div className="hint">Başka bir projede cevap bekleniyor…</div>}
-        <form onSubmit={send}>
+        {files.length > 0 && (
+          <div className="pending">
+            {files.map((f, i) => (
+              <span key={i} className="chipfile">
+                {f.preview ? <img src={f.preview} alt="" /> : '📄'} {f.name}
+                <button type="button" onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))} title="Kaldır">×</button>
+              </span>
+            ))}
+          </div>
+        )}
+        <form
+          onSubmit={send}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            addFiles(e.dataTransfer.files);
+          }}
+        >
+          <input ref={fileInput} type="file" accept="image/*,application/pdf" multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }} />
+          <button type="button" className="btn" onClick={() => fileInput.current?.click()} title="Resim ya da PDF ekle" disabled={files.length >= MAX_FILES}>📎</button>
           <textarea
+            onPaste={onPaste}
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
@@ -266,7 +405,7 @@ export default function Panel() {
             placeholder={busy ? 'Cevap bekleniyor…' : 'Mesaj yaz'}
             rows={2}
           />
-          <button className="btn primary" disabled={busy || !text.trim()}>Gönder</button>
+          <button className="btn primary" disabled={busy || (!text.trim() && !files.length)}>Gönder</button>
         </form>
       </div>
     </div>

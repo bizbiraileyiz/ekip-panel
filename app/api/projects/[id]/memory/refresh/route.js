@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getProject, recentMessages } from '@/lib/db';
-import { ask, NAMES } from '@/lib/ai';
+import { ask, NAMES, textTurns } from '@/lib/ai';
 import { withAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -30,7 +30,7 @@ Biçim (kısa maddeler, Türkçe):
   const user = `Proje: ${project.name}\n\n<mevcut_kayit>\n${project.memory || '(boş)'}\n</mevcut_kayit>\n\n<konusma>\n${history || '(yok)'}\n</konusma>\n\nGüncel kaydın tamamını yaz.`;
 
   try {
-    const draft = await ask('claude', system, [{ role: 'user', content: user }], { maxTokens: 3000 });
+    const draft = await ask('claude', system, textTurns(user), { maxTokens: 3000, tools: false });
     return NextResponse.json({ draft, version: project.memory_version });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 502 });

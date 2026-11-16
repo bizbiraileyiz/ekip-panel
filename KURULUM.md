@@ -20,3 +20,10 @@ Anahtarları sadece Railway'e gir. Sohbete ya da GitHub'a yazma.
 - Üstteki listeden projeyi seç. "+" ile yeni proje ekleyebilirsin.
 - Her mesajına önce Claude, sonra ChatGPT cevap verir.
 - **Karar kaydı:** projenin ortak hafızası. Elle düzenleyebilirsin. "Claude'dan taslak iste" dersen taslak gelir, sen onaylamadan kaydedilmez. Eski sürümler "Geçmiş" menüsünde durur.
+
+## v0.3 – araçlar
+- Modeller internette arayabilir, link okuyabilir (Claude), kod çalıştırabilir ve GitHub'daki kodu okuyabilir.
+- Mesaja resim/PDF eklemek için 📎, yapıştırma (Ctrl+V) ya da sürükle-bırak. Dosya başına en fazla 4 MB, mesaj başına 4 dosya.
+- **Hakkımda:** tüm projelerde ortak "Murat hakkında" metni.
+- İsteğe bağlı `GITHUB_TOKEN`: GitHub → Settings → Developer settings → Fine-grained tokens → sadece `ekip-panel`, izin: Contents = Read-only. Token yoksa dosya okuma ve son değişiklik yine çalışır; tüm dosya listesi saatlik sınıra takılabilir.
+- Bir araç sorun çıkarırsa Railway'de `TOOLS_WEB=false` ya da `TOOLS_CODE=false` ile kapatılabilir.

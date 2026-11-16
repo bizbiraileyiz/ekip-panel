@@ -36,3 +36,14 @@ Sahte çerez → 401. 6. hatalı denemede 429. Çıkış sonrası eski çerez �
 - Tek kullanıcı, tek sunucu örneği.
 - Markdown işlenmiyor. Dosya ve görsel yükleme yok.
 - Harcama sınırı dolar değil, çağrı sayısı üzerinden.
+
+## v0.3
+- **OpenAI:** Chat Completions yerine Responses API (`/v1/responses`). Araçlar: `web_search`, `code_interpreter`, GitHub fonksiyonları. Fonksiyon döngüsü `previous_response_id` ile, en fazla 10 tur.
+- **Claude:** Sunucu araçları `web_search_20250305`, `web_fetch_20250910`, `code_execution_20250825` (sürümler ve beta başlığı env ile değiştirilebilir), GitHub için istemci araçları. `pause_turn` ve `tool_use` döngüsü, en fazla 10 tur.
+- **Yedek davranış:** Sunucu araçları 400 hatası verirse çağrı araçsız tekrarlanır ve cevaba not düşülür; Test butonu bunu gösterir.
+- **GitHub araçları (salt okunur):** `github_list`, `github_read`, `github_commits`, `github_commit`. Token yoksa açık repolarda raw, .patch ve .atom adresleri kullanılır (API'nin saatlik 60 istek sınırına takılmamak için).
+- **Ekler:** `attachments` tablosu (bytea). Kabul edilenler: png/jpeg/gif/webp/pdf, ≤4 MB, ≤4 adet. Büyük resimler tarayıcıda 2000 px'e küçültülür. Ek verisi sadece son 3 ekli mesaj için modele gider, öncekiler yer tutucu metinle geçer. `/api/attachments/:id` oturum kontrollü, `nosniff` başlıklı.
+- **settings tablosu:** `murat_profile` her iki modelin sistem istemine `<murat_hakkinda>` veri bloğu olarak eklenir.
+- **Markdown:** react-markdown + remark-gfm. Ham HTML işlenmez, linkler yeni sekmede açılır.
+- **Sistem istemi:** Panelin kimin tarafından geliştirildiği, repo adresi ve "[Geliştirici Claude]:" mesaj kuralı eklendi.
+- **Akış:** Uzun araç kullanımında bağlantı kopmasın diye 15 sn'de bir `ping` olayı gönderilir.
