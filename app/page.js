@@ -297,7 +297,7 @@ export default function Panel() {
   }
 
   async function clearChat() {
-    if (!confirm('Bu projenin sohbeti temizlensin mi?\nKarar kaydı ve Hakkımda kalır. Mesajlar silinmez, arşivlenir.')) return;
+    if (!confirm('Bu projenin tüm mesajları kalıcı olarak silinsin mi?\nGeri alınamaz. Karar kaydı ve Hakkımda kalır.')) return;
     const res = await api(`/api/projects/${pid}/clear`, { method: 'POST' });
     const r = await res.json();
     if (!res.ok) return setError(r.error || 'Temizlenemedi');
