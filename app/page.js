@@ -278,7 +278,7 @@ export default function Panel() {
   }
 
   async function newProject() {
-    const name = prompt('Yeni proje adı');
+    const name = prompt('Yeni oda adı');
     if (!name?.trim()) return;
     const p = await api('/api/projects', { method: 'POST', body: JSON.stringify({ name }) }).then((r) => r.json());
     if (p.id) {
@@ -297,6 +297,16 @@ export default function Panel() {
     } catch (e) {
       setHealth(`Test başarısız: ${e.message}`);
     }
+  }
+
+  async function deleteProject() {
+    const name = projects.find((p) => p.id === pid)?.name || '';
+    if (!confirm(`"${name}" odası silinsin mi?\nTüm mesajları ve listesi kalıcı olarak silinir. Geri alınamaz.`)) return;
+    const res = await api(`/api/projects/${pid}`, { method: 'DELETE' });
+    const r = await res.json();
+    if (!res.ok) return setError(r.error || 'Silinemedi');
+    setProjects(r);
+    setPid(r[0]?.id ?? null);
   }
 
   async function clearChat() {
@@ -320,7 +330,8 @@ export default function Panel() {
             <option key={p.id} value={p.id}>{p.name}</option>
           ))}
         </select>
-        <button className="btn" onClick={newProject} title="Yeni proje">+</button>
+        <button className="btn" onClick={newProject} title="Yeni oda">+</button>
+        <button className="btn" onClick={deleteProject} disabled={busy} title="Bu odayı sil">−</button>
         <button className="btn" onClick={() => (mem ? setMem(null) : loadMemory())}>Liste</button>
         <button className="btn" onClick={openProfile} title="Tüm projelerde ortak bilgi">Hakkımda</button>
         <button className="btn" onClick={clearChat} disabled={busy} title="Sohbeti temizle">Temizle</button>
