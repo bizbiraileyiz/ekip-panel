@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-const LABEL = { murat: 'Murat', claude: 'Claude', chatgpt: 'ChatGPT', sistem: 'Sistem' };
+const LABEL = { murat: 'Murat', claude: 'Claude', chatgpt: 'ChatGPT', sistem: 'Sistem', codex: 'Codex', dev: 'Dev' };
 
 function store(key, val) {
   try {
@@ -262,6 +262,15 @@ export default function Panel() {
     }
   }
 
+  const current = projects.find((p) => p.id === pid);
+
+  async function toggleAuto() {
+    if (!current) return;
+    const res = await api(`/api/projects/${pid}`, { method: 'PATCH', body: JSON.stringify({ auto_reply: !current.auto_reply }) });
+    const r = await res.json();
+    if (res.ok) setProjects((prev) => prev.map((p) => (p.id === r.id ? r : p)));
+  }
+
   async function deleteProject() {
     const name = projects.find((p) => p.id === pid)?.name || '';
     if (!confirm(`"${name}" odası silinsin mi?\nTüm mesajları kalıcı olarak silinir. Geri alınamaz.`)) return;
@@ -296,6 +305,11 @@ export default function Panel() {
         <button className="btn" onClick={newProject} title="Yeni oda">+</button>
         <button className="btn" onClick={deleteProject} disabled={busy} title="Bu odayı sil">−</button>
         <button className="btn" onClick={openProfile} title="Tüm projelerde ortak bilgi">Hakkımda</button>
+        {current && (
+          <button className="btn" onClick={toggleAuto} title="Bu odada paneldeki Claude ve ChatGPT otomatik cevap versin mi?">
+            {current.auto_reply ? 'Otomatik cevap: açık' : 'Otomatik cevap: kapalı'}
+          </button>
+        )}
         <button className="btn" onClick={clearChat} disabled={busy} title="Sohbeti temizle">Temizle</button>
         <button className="btn" onClick={() => (health ? setHealth('') : testConnection())} title="Bağlantı testi">Test</button>
         <button className="btn" onClick={logout} title="Çıkış">⎋</button>

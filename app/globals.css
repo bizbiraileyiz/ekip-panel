@@ -93,3 +93,8 @@ button { cursor: pointer; }
 .list li button { border: 0; background: none; font-size: 18px; line-height: 1; color: var(--muted); padding: 0 4px; }
 .list li button:hover { color: var(--sistem); }
 .listin { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+
+.msg.codex { border-left: 3px solid #6b4bd6; }
+.msg.codex .who { color: #6b4bd6; }
+.msg.dev { border-left: 3px solid var(--claude); background: #fdf6f1; }
+.msg.dev .who { color: var(--claude); }
