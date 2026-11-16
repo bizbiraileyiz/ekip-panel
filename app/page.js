@@ -315,7 +315,7 @@ export default function Panel() {
       )}
 
       <div className="msgs">
-        {!messages.length && <div className="empty">Henüz mesaj yok. Yazdığın her mesaja önce Claude, sonra ChatGPT cevap verir.</div>}
+        {!messages.length && <div className="empty">Henüz mesaj yok. Etiketsiz mesaja ikisi sırayla cevap verir; @claude ya da @gpt yazarsan sadece o cevap verir.</div>}
         {messages.map((m) => (
           <div key={m.id} className={`msg ${m.sender}`}>
             {m.sender !== 'murat' && <div className="who">{LABEL[m.sender] || m.sender}</div>}
